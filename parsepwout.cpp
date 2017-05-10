@@ -2,6 +2,8 @@
 #include<stdlib.h>
 #include<string.h>
 #include<list>
+#include<regex>
+#include <iostream>
 
 using namespace std;
 
@@ -114,15 +116,31 @@ char * CleanKey(const char * keyword) {
  */
 
 const char ncore_str[] = "Parallel version (MPI & OpenMP), running on";
+const std::regex ncore_rgx("running on[ X]+([[:digit:]]+) processor");
+const std::regex only_mpi_rgx("(Parallel version \\(MPI\\),)");
+
 const char mpitask_str[] = "Number of MPI processes:";
+const std::regex mpitask_rgx("Number of MPI processes:[ X]+([[:digit:]]+)");
+
 const char ompthread_str[] = "Threads/MPI process:";
+const std::regex ompthread_rgx("Threads/MPI process:[ X]+([[:digit:]]+)");
+
 const char npool_str[] = "K-points division:     npool     =";
+const std::regex npool_rgx("npool[ X]+=[ X]+([[:digit:]]+)");
+
 const char ntg_str[] = "wavefunctions fft division:  fft and procs/group =";
+const std::regex ntg_rgx("fft and procs/group =[ X]+([[:digit:]]+)");
+
 const char northo_CUSTOM_str[] = "custom distributed-memory algorithm (size of sub-group:";
 const char northo_SCALAPACK_str[] = "scalapack distributed-memory algorithm (size of sub-group:";
 const char northo_ELPA_str[] = "ELPA distributed-memory algorithm (size of sub-group:";
+const std::regex northo_rgx("size of sub-group:[ X]+([[:digit:]]+)");
+
 const char nbgrp_str[] = "band groups division:  nbgrp     =";
+const std::regex nbgrp_rgx("R & G space division:.*=[ X]+([[:digit:]]+)");
+
 const char qever_str[] = "Program PWSCF v.6.0";
+const std::regex qever_rgx("Program PWSCF v.([[:digit:]].[[:digit:]])");
 
 class ParaGeom {
 	int ncore;
@@ -138,70 +156,56 @@ public:
 		ncore = mpitask = ompthread = npool = ntg = northo = nbgrp = 1;
 		qever[0] = '\0';
 	}
+  void Parse(const char * a) {
 
-	void Parse(const char * a) {
-		while (*a == ' ') a++; // get rid of leading spaces
-		if (!strncmp(a, ncore_str, strlen(ncore_str))) {
-			if (debug) printf("%s\n", a);
-			a = a + strlen(ncore_str);
-			while (*a == ' ') a++; // get rid of leading spaces
-			ncore = atoi(a);
-		}
-		if (!strncmp(a, mpitask_str, strlen(mpitask_str))) {
-			if (debug) printf("%s\n", a);
-			a = a + strlen(mpitask_str);
-			while (*a == ' ') a++; // get rid of leading spaces
-			mpitask = atoi(a);
-			ompthread = ncore / mpitask;
-		}
-		if (!strncmp(a, npool_str, strlen(npool_str))) {
-			if (debug) printf("%s\n", a);
-			a = a + strlen(npool_str);
-			while (*a == ' ') a++; // get rid of leading spaces
-			npool = atoi(a);
-		}
-		if (!strncmp(a, ntg_str, strlen(ntg_str))) {
-			if (debug) printf("%s\n", a);
-			a = a + strlen(ntg_str);
-			while (*a == ' ') a++; // get rid of leading spaces
-			ntg = atoi(a);
-		}
-    // The following three cases are mutually exclusive by design
-		if (!strncmp(a, northo_CUSTOM_str, strlen(northo_CUSTOM_str))) {
-			if (debug) printf("%s\n", a);
-			a = a + strlen(northo_CUSTOM_str);
-			while (*a == ' ') a++; // get rid of leading spaces
-			northo = atoi(a);
-			northo *= northo;
-		}
-    if (!strncmp(a, northo_SCALAPACK_str, strlen(northo_SCALAPACK_str))) {
-      if (debug) printf("%s\n", a);
-      a = a + strlen(northo_SCALAPACK_str);
-      while (*a == ' ') a++; // get rid of leading spaces
-      northo = atoi(a);
-      northo *= northo;
+    const size_t len = strlen(a);
+    
+    std::cmatch match;
+    // cores
+    if (std::regex_search( a, a+len, match, ncore_rgx))
+    {
+        ncore = std::stoi(match[1].str());
     }
-    if (!strncmp(a, northo_ELPA_str, strlen(northo_ELPA_str))) {
-      if (debug) printf("%s\n", a);
-      a = a + strlen(northo_ELPA_str);
-      while (*a == ' ') a++; // get rid of leading spaces
-      northo = atoi(a);
-      northo *= northo;
+    // mpi
+    if (std::regex_search( a, a+len, match, mpitask_rgx))
+    {
+        mpitask = std::stoi(match[1].str());
+    } 
+    if (std::regex_search( a, a+len, match, ompthread_rgx))
+    {
+        ompthread = std::stoi(match[1].str());
+    } 
+    if (std::regex_search( a, a+len, match, only_mpi_rgx))
+    {
+        std::cerr << "Pure MPI run\n";
+        mpitask = ncore;
+        ompthread = 1;
     }
-		if (!strncmp(a, nbgrp_str, strlen(nbgrp_str))) {
-			if (debug) printf("%s\n", a);
-			a = a + strlen(nbgrp_str);
-			while (*a == ' ') a++; // get rid of leading spaces
-			nbgrp = atoi(a);
-		}
-		if (!strncmp(a, qever_str, strlen(qever_str))) {
-			if (debug) printf("%s\n", a);
-			qever[0] = a[16];
-			qever[1] = a[18];
-			qever[3] = '\0';
-		}
-
-	}
+    if (std::regex_search( a, a+len, match, npool_rgx))
+    {
+        npool = std::stoi(match[1].str());
+    }
+    
+    if (std::regex_search( a, a+len, match, ntg_rgx))
+    {
+        ntg = std::stoi(match[1].str());
+    }
+    
+    if (std::regex_search( a, a+len, match, nbgrp_rgx))
+    {
+        nbgrp = std::stoi(match[1].str());
+    }
+    if (std::regex_search( a, a+len, match, northo_rgx))
+    {
+        northo = std::stoi(match[1].str());
+        northo *= northo;
+    }
+    if (std::regex_search( a, a+len, match, qever_rgx))
+    {
+        strncpy(qever , match[1].str().c_str(),3);
+    }
+    
+  }
 	int GetCores() { return ncore; };
 	int GetTasks() { return mpitask; };
 	int GetThreads() { return ompthread; };
