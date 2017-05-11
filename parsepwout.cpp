@@ -9,7 +9,7 @@ using namespace std;
 
 const int debug = 0;
 
-const int NKEY = 28;
+const int NKEY = 30;
 const int KMAXLEN = 32;
 
 double get_wtime(const char * line);
@@ -28,12 +28,14 @@ enum {
 	mix_rho,
 	init_us_2,
 	regterg,
+	cegterg,
 	sum_band_bec,
 	addusdens,
 	h_psi,
 	s_psi,
 	g_psi,
 	rdiaghg,
+	cdiaghg,
 	h_psi_pot,
 	h_psi_calbec,
 	vloc_psi,
@@ -60,12 +62,14 @@ char keyword[NKEY][KMAXLEN] = {
 "     mix_rho      :",
 "     init_us_2    :",
 "     regterg      :",
+"     cegterg      :",
 "     sum_band:bec :",
 "     addusdens    :",
 "     h_psi        :",
 "     s_psi        :",
 "     g_psi        :",
 "     rdiaghg      :",
+"     cdiaghg      :",
 "     h_psi:pot    :",
 "     h_psi:calbec :",
 "     vloc_psi     :",
